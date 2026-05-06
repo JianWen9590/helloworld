@@ -1,4 +1,4 @@
-name: Test Build
+name: Build
 
 on:
   push:
@@ -18,20 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: arm_cortex-a9_vfpv3-d16
-            target: mvebu-cortexa9
-          - arch: mips_24kc
-            target: ath79-generic
-          - arch: mipsel_24kc
-            target: mt7621
-          - arch: aarch64_cortex-a53
-            target: mvebu-cortexa53
-          - arch: arm_cortex-a15_neon-vfpv4
-            target: armvirt-32
-          - arch: i386_pentium-mmx
-            target: x86-geode
           - arch: x86_64
             target: x86-64
+          - arch: aarch64_cortex-a53
+            target: mvebu-cortexa53
+          - arch: aarch64_generic
+            target: armsr-armv8
 
     steps:
       - name: Free Disk Space
@@ -100,24 +92,12 @@ jobs:
 
       - name: Copy all IPK to root
         run: |
-          ls -la
-          ls -la bin/ || true
-          find bin/ -type d | sort
-
-          IPK_FILES=$(find bin/ -type f -name "*.ipk")
-          if [ -n "$IPK_FILES" ]; then
-            echo "找到IPK文件："
-            echo "$IPK_FILES"
-            find bin/ -type f -name "*.ipk" -exec cp {} . \;
-          else
-            echo "警告：本次没有编译出任何 .ipk 插件包"
-          fi
-
-          ls -la *.ipk 2>/dev/null || echo "当前目录无ipk文件"
+          find bin/ -type f -name "*.ipk" -exec cp {} . \; || true
+          ls -la *.ipk 2>/dev/null || echo "无 ipk 文件"
 
       - name: Collect metadata
         run: |
-          MERGE_ID=$(git rev-parse --short HEAD
+          MERGE_ID=$(git rev-parse --short HEAD)
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             BASE_ID=$(git rev-parse --short origin/$BRANCH)
             HEAD_ID=$(git rev-parse --short HEAD)
@@ -127,7 +107,6 @@ jobs:
             HEAD_ID=$MERGE_ID
             PRNUMBER="push-$MERGE_ID"
           fi
-          
           echo "MERGE_ID=$MERGE_ID" >> $GITHUB_ENV
           echo "BASE_ID=$BASE_ID" >> $GITHUB_ENV
           echo "HEAD_ID=$HEAD_ID" >> $GITHUB_ENV
@@ -138,7 +117,6 @@ jobs:
         run: |
           shopt -s nullglob
           IPKS=( *.ipk )
-          
           cat << EOF > PKG-INFO
           Metadata-Version: 2.1
           Name: ${{ env.ARCHIVE_NAME }}
@@ -149,13 +127,9 @@ jobs:
           Platform: ${{ matrix.arch }}
 
           Modified packages:
-          EOF
-          
-          for p in $PACKAGES; do
-            echo "  $p" >> PKG-INFO
-          done
+          $(for p in $PACKAGES; do echo "  $p"; done)
 
-          echo "Package count: ${#IPKS[@]}" >> PKG-INFO
+          Package count: ${#IPKS[@]}
           EOF
 
       - name: Upload IPK Artifact
