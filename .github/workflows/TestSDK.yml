@@ -1,0 +1,28 @@
+name: Test SDK
+
+on: [workflow_dispatch]  # 手动触发
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            target: x86-64
+          - arch: aarch64_cortex-a53
+            target: mvebu-cortexa53
+          - arch: aarch64_generic
+            target: armvirt-64   # 修改为已验证的目标
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dropbear
+        uses: immortalwrt/gh-action-sdk@v7
+        env:
+          ARCH: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
+          packages: dropbear
+
+      - name: List ipk files
+        run: find . -name "*.ipk" -type f
